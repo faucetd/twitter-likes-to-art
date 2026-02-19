@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
 <link rel="icon" type="image/png" href="/static/favicon.png">
 <title>Wall Peepo</title>
+<meta name="description" content="help me decide which art to hang on my wall. swipe right on pieces that deserve a spot.">
+<meta property="og:title" content="wall peepo">
+<meta property="og:description" content="help me decide which art to hang on my wall. swipe right on pieces that deserve a spot.">
+<meta property="og:image" content="https://wall-peepo.fly.dev/static/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://wall-peepo.fly.dev">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="wall peepo">
+<meta name="twitter:description" content="help me decide which art to hang on my wall. swipe right on pieces that deserve a spot.">
+<meta name="twitter:image" content="https://wall-peepo.fly.dev/static/og-image.png">
 <style>
   :root {
     --bg: #0c0c0e;
@@ -14,6 +24,7 @@
     --text-muted: #6b6b80;
     --accent-yes: #4ade80;
     --accent-no: #f87171;
+    --accent-super: #facc15;
     --accent-link: #7ba4f0;
   }
 
@@ -79,7 +90,7 @@
     width: 100%;
     max-width: 500px;
     padding: 6px 20px 2px;
-    font-size: 0.7rem;
+    font-size: 0.82rem;
     line-height: 1.55;
     color: var(--text-muted);
     text-align: center;
@@ -213,12 +224,20 @@
     box-shadow: 0 0 24px rgba(248,113,113,0.2);
   }
 
+  .stamp.super {
+    left: 50%;
+    transform: translateX(-50%) rotate(-4deg);
+    color: var(--accent-super);
+    border-color: var(--accent-super);
+    box-shadow: 0 0 24px rgba(250,204,21,0.25);
+  }
+
   /* Controls */
   .controls {
     flex-shrink: 0;
     padding: 12px 20px 24px;
     display: flex;
-    gap: 20px;
+    gap: 16px;
     justify-content: center;
     align-items: center;
   }
@@ -261,12 +280,28 @@
     border-color: var(--accent-yes);
   }
 
-  .vote-count {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
-    min-width: 48px;
+  .btn.super {
+    border-color: rgba(250,204,21,0.5);
+    color: var(--accent-super);
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+
+  .btn.super:hover {
+    background: rgba(250,204,21,0.1);
+    box-shadow: 0 0 20px rgba(250,204,21,0.15);
+    border-color: var(--accent-super);
+  }
+
+  footer {
+    width: 100%;
     text-align: center;
+    padding: 4px 0 6px;
+    font-size: 0.55rem;
+    color: #3a3a4a;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
   }
 
   .hint {
@@ -287,14 +322,37 @@
     100% { opacity: 0; }
   }
 
+  .confetti-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 200;
+    overflow: hidden;
+  }
+
+  .confetti {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    opacity: 0;
+    animation: confettiBurst 1s ease-out forwards;
+  }
+
+  @keyframes confettiBurst {
+    0%   { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+    100% { opacity: 0; transform: translate(var(--cx), var(--cy)) rotate(var(--cr)) scale(0.3); }
+  }
+
   /* Responsive */
   @media (max-height: 700px) {
     header { padding: 8px 16px 0; }
-    .about-bar { padding: 4px 16px 0; font-size: 0.62rem; }
+    .about-bar { padding: 4px 16px 0; font-size: 0.72rem; }
     .card img { max-height: 52dvh; }
     .card { max-height: 72dvh; }
     .controls { padding: 8px 20px 14px; }
     .btn { width: 48px; height: 48px; font-size: 1.2rem; }
+    .btn.super { width: 40px; height: 40px; font-size: 1rem; }
     .stamp { font-size: 1.8rem; }
   }
 
@@ -315,7 +373,7 @@
 <header>
   <div class="header-title">
     <h1>wall peepo</h1>
-    <a class="gh-link" href="https://github.com" target="_blank" rel="noopener" title="Source code"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+    <a class="gh-link" href="https://github.com/faucetd/twitter-likes-to-art" target="_blank" rel="noopener" title="Source code"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
   </div>
   <a href="/dashboard">leaderboard &rarr;</a>
 </header>
@@ -333,26 +391,19 @@
 
 <div class="controls">
   <button class="btn no" id="btn-no" title="Nah (← or swipe left)">✕</button>
-  <span class="vote-count" id="vote-count"></span>
+  <button class="btn super" id="btn-super" title="Superlike (↑ or swipe up)">★</button>
   <button class="btn yes" id="btn-yes" title="Hang it (→ or swipe right)">♥</button>
 </div>
 
-<div class="hint" id="hint">swipe or use arrow keys</div>
+<div class="hint" id="hint">swipe or use arrow keys · swipe up to superlike</div>
 
 <script>
 const arena = document.getElementById('arena');
 const loading = document.getElementById('loading');
-const voteCountEl = document.getElementById('vote-count');
 let current = null;
 let cardEl = null;
 let busy = false;
 let prefetched = null;
-let sessionVotes = 0;
-
-function updateVoteCount() {
-  voteCountEl.textContent = sessionVotes > 0 ? sessionVotes : '';
-}
-
 async function fetchNext() {
   const res = await fetch('/api/next');
   return res.json();
@@ -368,7 +419,11 @@ async function loadCard() {
   loading.style.display = '';
 
   let data;
-  if (prefetched) {
+  const stashed = sessionStorage.getItem('currentImage');
+  if (stashed) {
+    data = JSON.parse(stashed);
+    sessionStorage.removeItem('currentImage');
+  } else if (prefetched) {
     data = prefetched;
     prefetched = null;
   } else {
@@ -383,6 +438,7 @@ async function loadCard() {
   }
 
   current = data;
+  sessionStorage.setItem('currentImage', JSON.stringify(data));
   loading.style.display = 'none';
 
   const card = document.createElement('div');
@@ -395,6 +451,7 @@ async function loadCard() {
     </div>
     <div class="stamp yes">HANG</div>
     <div class="stamp no">NOPE</div>
+    <div class="stamp super">LOVE</div>
   `;
 
   const img = card.querySelector('img');
@@ -440,13 +497,25 @@ function setupDrag(card) {
 
     const stampYes = card.querySelector('.stamp.yes');
     const stampNo  = card.querySelector('.stamp.no');
-    const progress = Math.min(Math.abs(dx) / 100, 1);
-    if (dx > 0) {
-      stampYes.style.opacity = progress;
+    const stampSuper = card.querySelector('.stamp.super');
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    const isUp = dy < -60 && ady > adx;
+    if (isUp) {
+      const p = Math.min(ady / 100, 1);
+      stampSuper.style.opacity = p;
+      stampYes.style.opacity = 0;
       stampNo.style.opacity = 0;
     } else {
-      stampNo.style.opacity = progress;
-      stampYes.style.opacity = 0;
+      stampSuper.style.opacity = 0;
+      const progress = Math.min(adx / 100, 1);
+      if (dx > 0) {
+        stampYes.style.opacity = progress;
+        stampNo.style.opacity = 0;
+      } else {
+        stampNo.style.opacity = progress;
+        stampYes.style.opacity = 0;
+      }
     }
   }
 
@@ -454,13 +523,19 @@ function setupDrag(card) {
     if (!dragging) return;
     dragging = false;
     card.classList.remove('dragging');
-    if (Math.abs(dx) > 90) {
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    const isUp = dy < -60 && ady > adx;
+    if (isUp) {
+      flingCard('super');
+    } else if (adx > 90) {
       flingCard(dx > 0 ? 'right' : 'left');
     } else {
       card.style.transition = 'transform 0.3s cubic-bezier(.2,.8,.3,1)';
       card.style.transform = '';
       card.querySelector('.stamp.yes').style.opacity = 0;
       card.querySelector('.stamp.no').style.opacity = 0;
+      card.querySelector('.stamp.super').style.opacity = 0;
       setTimeout(() => { card.style.transition = ''; }, 300);
     }
     dx = 0;
@@ -482,11 +557,45 @@ function setupDrag(card) {
   };
 }
 
+function spawnConfetti() {
+  const container = document.createElement('div');
+  container.className = 'confetti-container';
+  document.body.appendChild(container);
+  const colors = ['#facc15', '#fde68a', '#fbbf24', '#f59e0b', '#4ade80', '#f87171', '#60a5fa', '#e879f9'];
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  for (let i = 0; i < 40; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'confetti';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 120 + Math.random() * 200;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist - 80;
+    dot.style.left = cx + 'px';
+    dot.style.top = cy + 'px';
+    dot.style.setProperty('--cx', dx + 'px');
+    dot.style.setProperty('--cy', dy + 'px');
+    dot.style.setProperty('--cr', (Math.random() * 720 - 360) + 'deg');
+    dot.style.background = colors[Math.floor(Math.random() * colors.length)];
+    dot.style.width = (5 + Math.random() * 7) + 'px';
+    dot.style.height = (5 + Math.random() * 7) + 'px';
+    dot.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    dot.style.animationDuration = (0.6 + Math.random() * 0.5) + 's';
+    container.appendChild(dot);
+  }
+  setTimeout(() => container.remove(), 1200);
+}
+
 function flingCard(direction) {
   if (!cardEl) return;
-  const flyX = direction === 'right' ? window.innerWidth : -window.innerWidth;
   cardEl.style.transition = 'transform 0.35s cubic-bezier(.2,.8,.3,1), opacity 0.3s ease';
-  cardEl.style.transform = `translate(${flyX}px, 0) rotate(${flyX * 0.04}deg)`;
+  if (direction === 'super') {
+    cardEl.style.transform = `translate(0, ${-window.innerHeight}px) scale(1.05)`;
+    spawnConfetti();
+  } else {
+    const flyX = direction === 'right' ? window.innerWidth : -window.innerWidth;
+    cardEl.style.transform = `translate(${flyX}px, 0) rotate(${flyX * 0.04}deg)`;
+  }
   cardEl.style.opacity = '0';
   vote(direction);
 }
@@ -504,9 +613,9 @@ async function vote(direction, silent = false) {
   }
   cardEl = null;
 
+  sessionStorage.removeItem('currentImage');
+
   if (imageId && !silent) {
-    sessionVotes++;
-    updateVoteCount();
     fetch('/api/vote', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -523,6 +632,10 @@ document.getElementById('btn-no').addEventListener('click', () => {
   if (cardEl && !busy) flingCard('left');
 });
 
+document.getElementById('btn-super').addEventListener('click', () => {
+  if (cardEl && !busy) flingCard('super');
+});
+
 document.getElementById('btn-yes').addEventListener('click', () => {
   if (cardEl && !busy) flingCard('right');
 });
@@ -530,10 +643,12 @@ document.getElementById('btn-yes').addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowLeft')  { if (cardEl && !busy) flingCard('left'); }
   if (e.key === 'ArrowRight') { if (cardEl && !busy) flingCard('right'); }
+  if (e.key === 'ArrowUp')   { if (cardEl && !busy) flingCard('super'); }
 });
 
 // ---- Init ----
 loadCard();
 </script>
+<footer>made by faucet_d · all rights reserved · 2026</footer>
 </body>
 </html>

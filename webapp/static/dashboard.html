@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/png" href="/static/favicon.png">
 <title>Wall Peepo — Leaderboard</title>
+<meta name="description" content="top-ranked art from wall peepo — voted on by the people.">
+<meta property="og:title" content="wall peepo — leaderboard">
+<meta property="og:description" content="top-ranked art from wall peepo — voted on by the people.">
+<meta property="og:image" content="https://wall-peepo.fly.dev/static/og-image.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="wall peepo — leaderboard">
+<meta name="twitter:description" content="top-ranked art — voted on by the people.">
+<meta name="twitter:image" content="https://wall-peepo.fly.dev/static/og-image.png">
 <style>
   :root {
     --bg: #0c0c0e;
@@ -186,6 +195,7 @@
   }
 
   .tile-votes .up { color: var(--accent-yes); }
+  .tile-votes .super { color: #facc15; }
   .tile-votes .down { color: var(--accent-no); }
   .tile-votes .score { color: var(--text-muted); }
 
@@ -245,6 +255,88 @@
     margin-top: 2px;
   }
 
+  .how-btn {
+    background: none;
+    border: 1.5px solid #333;
+    color: var(--text-muted);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .how-btn:hover { border-color: var(--text); color: var(--text); }
+
+  .tooltip-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .tooltip-overlay.open { display: flex; }
+
+  .tooltip-box {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 24px 22px;
+    max-width: 380px;
+    width: 100%;
+    position: relative;
+  }
+
+  .tooltip-box h3 {
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+
+  .tooltip-box p {
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .tooltip-box p:last-child { margin-bottom: 0; }
+
+  .tooltip-box .highlight {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .tooltip-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+
+  footer {
+    width: 100%;
+    text-align: center;
+    padding: 12px 0 20px;
+    font-size: 0.55rem;
+    color: #3a3a4a;
+    letter-spacing: 0.02em;
+  }
+
   /* Responsive */
   @media (max-width: 500px) {
     .grid {
@@ -268,10 +360,22 @@
 <header>
   <div class="header-title">
     <h1>leaderboard</h1>
-    <a class="gh-link" href="https://github.com" target="_blank" rel="noopener" title="Source code"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+    <a class="gh-link" href="https://github.com/faucetd/twitter-likes-to-art" target="_blank" rel="noopener" title="Source code"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+    <button class="how-btn" id="how-btn" title="How scoring works">?</button>
   </div>
   <a href="/">&larr; keep swiping</a>
 </header>
+
+<div class="tooltip-overlay" id="how-modal">
+  <div class="tooltip-box">
+    <button class="tooltip-close" id="how-close">&times;</button>
+    <h3>how scoring works</h3>
+    <p>each image starts with an <span class="highlight">elo rating of 1500</span>, borrowed from <a href="https://en.wikipedia.org/wiki/Elo_rating_system" target="_blank" rel="noopener" style="color:var(--accent-link);text-decoration:underline;text-underline-offset:2px">chess rankings</a>.</p>
+    <p>when you <span class="highlight">swipe right</span>, the image "wins" against the field average and gains points. <span class="highlight">swipe left</span> = a loss, rating drops.</p>
+    <p>a <span class="highlight" style="color:#facc15">★ superlike</span> counts as a win with <span class="highlight">2x the impact</span> — use it for pieces you'd genuinely hang on your wall.</p>
+    <p>images that are already highly rated gain less from a win and lose more from a loss — so the cream rises to the top, but it's hard to stay there.</p>
+  </div>
+</div>
 
 <div class="stats" id="stats"></div>
 <div class="grid" id="grid">
@@ -293,6 +397,11 @@ const lightboxInfo = document.getElementById('lightbox-info');
 lightbox.addEventListener('click', (e) => {
   if (e.target.tagName !== 'A') lightbox.classList.remove('open');
 });
+
+const howModal = document.getElementById('how-modal');
+document.getElementById('how-btn').addEventListener('click', () => howModal.classList.add('open'));
+document.getElementById('how-close').addEventListener('click', () => howModal.classList.remove('open'));
+howModal.addEventListener('click', (e) => { if (e.target === howModal) howModal.classList.remove('open'); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') lightbox.classList.remove('open');
 });
@@ -340,6 +449,7 @@ async function load() {
           <div class="tile-title">${escaped}</div>
           <div class="tile-votes">
             <span class="up">▲ ${img.votes_up}</span>
+            ${img.votes_super ? `<span class="super">★ ${img.votes_super}</span>` : ''}
             <span class="down">▼ ${img.votes_down}</span>
             <span class="score">${pct}% · ${Math.round(img.score)}</span>
           </div>
@@ -356,5 +466,6 @@ function esc(s) {
 
 load();
 </script>
+<footer>made by faucet_d · all rights reserved · 2026</footer>
 </body>
 </html>

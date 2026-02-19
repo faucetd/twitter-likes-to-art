@@ -7,16 +7,43 @@ Run:
 
 import json
 import random
+import time
 import uuid
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Cookie, Response, Query
+from fastapi import FastAPI, Cookie, Request, Response, Query
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .db import get_db, init_db, load_metadata_into_db
+
+
+# ---------------------------------------------------------------------------
+# Rate limiter — simple sliding window per IP
+# ---------------------------------------------------------------------------
+
+class RateLimiter:
+    def __init__(self, max_requests: int = 120, window_seconds: int = 60):
+        self.max_requests = max_requests
+        self.window = window_seconds
+        self._hits: dict[str, list[float]] = defaultdict(list)
+
+    def is_allowed(self, key: str) -> bool:
+        now = time.monotonic()
+        hits = self._hits[key]
+        # Prune old entries
+        self._hits[key] = hits = [t for t in hits if now - t < self.window]
+        if len(hits) >= self.max_requests:
+            return False
+        hits.append(now)
+        return True
+
+
+# 120 votes/min per IP — generous for normal use, blocks spam
+vote_limiter = RateLimiter(max_requests=120, window_seconds=60)
 
 ART_DIR = Path(__file__).resolve().parent.parent / "art"
 METADATA_PATH = ART_DIR / "metadata.json"
@@ -94,7 +121,7 @@ def next_image(response: Response, session_id: str | None = Cookie(default=None)
     ).fetchall()
     seen_ids = {r["image_id"] for r in seen_rows}
 
-    rows = conn.execute("SELECT id, filename, username, tweet_id, title, score, votes_up, votes_down FROM images").fetchall()
+    rows = conn.execute("SELECT id, filename, username, tweet_id, title, score, votes_up, votes_down, votes_super FROM images").fetchall()
     conn.close()
 
     candidates = [r for r in rows if r["id"] not in seen_ids]
@@ -127,33 +154,47 @@ def next_image(response: Response, session_id: str | None = Cookie(default=None)
 
 class VoteRequest(BaseModel):
     image_id: int
-    direction: str  # "left" (no) or "right" (yes)
+    direction: str  # "left" (no), "right" (yes), or "super" (superlike)
 
 
 @app.post("/api/vote")
-def cast_vote(vote: VoteRequest, response: Response, session_id: str | None = Cookie(default=None)):
+def cast_vote(vote: VoteRequest, request: Request, response: Response, session_id: str | None = Cookie(default=None)):
     session_id = _ensure_session(session_id, response)
 
-    if vote.direction not in ("left", "right"):
+    if vote.direction not in ("left", "right", "super"):
         return Response(status_code=400)
+
+    client_ip = request.client.host if request.client else "unknown"
+    if not vote_limiter.is_allowed(client_ip):
+        return Response(status_code=429)
 
     conn = get_db()
 
-    # Record the vote
     conn.execute(
         "INSERT INTO votes (image_id, direction, session_id) VALUES (?, ?, ?)",
         (vote.image_id, vote.direction, session_id),
     )
 
-    # Update running totals and Elo-ish score.
-    # "right" = they'd hang it, treat as a win against the field average.
     img = conn.execute("SELECT score, votes_up, votes_down FROM images WHERE id = ?", (vote.image_id,)).fetchone()
     if img:
         expected = 1 / (1 + 10 ** ((1500 - img["score"]) / 400))
-        actual = 1.0 if vote.direction == "right" else 0.0
-        new_score = img["score"] + ELO_K * (actual - expected)
+        if vote.direction == "super":
+            actual = 1.0
+            k = ELO_K * 2
+        elif vote.direction == "right":
+            actual = 1.0
+            k = ELO_K
+        else:
+            actual = 0.0
+            k = ELO_K
+        new_score = img["score"] + k * (actual - expected)
 
-        if vote.direction == "right":
+        if vote.direction == "super":
+            conn.execute(
+                "UPDATE images SET score = ?, votes_up = votes_up + 1, votes_super = votes_super + 1 WHERE id = ?",
+                (new_score, vote.image_id),
+            )
+        elif vote.direction == "right":
             conn.execute(
                 "UPDATE images SET score = ?, votes_up = votes_up + 1 WHERE id = ?",
                 (new_score, vote.image_id),
@@ -176,7 +217,7 @@ def cast_vote(vote: VoteRequest, response: Response, session_id: str | None = Co
 def leaderboard(limit: int = Query(default=50, le=200)):
     conn = get_db()
     rows = conn.execute(
-        """SELECT id, filename, username, tweet_id, title, score, votes_up, votes_down
+        """SELECT id, filename, username, tweet_id, title, score, votes_up, votes_down, votes_super
            FROM images
            WHERE votes_up + votes_down > 0
            ORDER BY score DESC
