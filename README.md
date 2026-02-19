@@ -228,6 +228,8 @@ Most users only need twikit (strategy 1).
 
 ## Webapp — Wall Peepo
 
+> **Live demo:** [wall-peepo.fly.dev](https://wall-peepo.fly.dev)
+
 A Tinder-style voting app for ranking your art. Swipe right to keep, left to
 skip, up to superlike. Images are scored with an Elo rating system.
 
