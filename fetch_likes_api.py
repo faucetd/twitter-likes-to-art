@@ -16,7 +16,7 @@ from requests_oauthlib import OAuth1
 
 logger = logging.getLogger(__name__)
 
-API_BASE = "https://api.twitter.com/2"
+API_BASE = "https://api.x.com/2"
 
 
 def parse_api_tweet(
@@ -65,7 +65,7 @@ def parse_api_tweet(
 
 def _load_dotenv() -> None:
     """Load .env from current or script directory into os.environ.
-    If TWITTER_ENV is set (e.g. hareofsorrow), load .env.<value> instead of .env (for second account).
+    If TWITTER_ENV is set, load .env.<value> instead of .env (for alternate accounts).
     """
     suffix = os.environ.get("TWITTER_ENV", "").strip()
     base = ".env" + (f".{suffix}" if suffix else "")
@@ -102,6 +102,20 @@ def get_oauth1_session() -> requests.Session:
     )
     session = requests.Session()
     session.auth = auth
+    session.headers["User-Agent"] = "TwitterLikesDownloader/1.0"
+    return session
+
+
+def get_bearer_session() -> requests.Session | None:
+    """Build a session with Bearer Token auth for app-only endpoints (tweet lookup etc.).
+    Returns None if no bearer token is configured.
+    """
+    _load_dotenv()
+    token = os.environ.get("TWITTER_BEARER_TOKEN")
+    if not token:
+        return None
+    session = requests.Session()
+    session.headers["Authorization"] = f"Bearer {token}"
     session.headers["User-Agent"] = "TwitterLikesDownloader/1.0"
     return session
 
@@ -171,6 +185,105 @@ def fetch_liked_tweets(
         time.sleep(0.5)
 
     return records
+
+
+def fetch_tweets_by_ids(
+    session: requests.Session,
+    tweet_ids: list[str],
+    like_source_label: str = "api",
+    photos_only: bool = True,
+) -> tuple[list[dict[str, Any]], set[str]]:
+    """Batch-lookup tweets by ID via GET /2/tweets.
+
+    Returns (records_with_media, resolved_ids). resolved_ids includes ALL IDs
+    that were successfully looked up (even those without media), so the caller
+    can determine which IDs still need gallery-dl fallback.
+
+    Handles 429 rate limits with retry. On 402/403 or persistent errors, stops
+    early and returns partial results.
+    """
+    import sys
+
+    params_base = {
+        "expansions": "attachments.media_keys,author_id",
+        "tweet.fields": "created_at,author_id,attachments",
+        "user.fields": "username",
+        "media.fields": "url,type",
+    }
+    records: list[dict[str, Any]] = []
+    resolved_ids: set[str] = set()
+    total = len(tweet_ids)
+
+    for i in range(0, total, 100):
+        batch = tweet_ids[i : i + 100]
+        params = {**params_base, "ids": ",".join(batch)}
+
+        r = None
+        for _attempt in range(5):
+            try:
+                r = session.get(f"{API_BASE}/tweets", params=params, timeout=30)
+            except requests.RequestException as exc:
+                print(f"  API request error: {exc}", file=sys.stderr, flush=True)
+                time.sleep(5)
+                continue
+
+            if r.status_code == 429:
+                retry_after = int(r.headers.get("Retry-After", 60))
+                print(
+                    f"  API rate limited, waiting {retry_after}s "
+                    f"(attempt {_attempt + 1}/5)...",
+                    file=sys.stderr, flush=True,
+                )
+                time.sleep(retry_after)
+                continue
+
+            if r.status_code in (402, 403):
+                print(
+                    f"  API returned {r.status_code} — stopping API lookup. "
+                    f"Resolved {len(resolved_ids)}/{total} so far.",
+                    file=sys.stderr, flush=True,
+                )
+                return records, resolved_ids
+
+            break
+
+        if r is None or r.status_code != 200:
+            status = r.status_code if r else "no response"
+            print(
+                f"  API batch failed (status {status}), skipping batch.",
+                file=sys.stderr, flush=True,
+            )
+            continue
+
+        data = r.json()
+        tweets = data.get("data") or []
+        includes = data.get("includes") or {}
+        users_map = {u["id"]: u for u in (includes.get("users") or [])}
+        media_map = {m["media_key"]: m for m in (includes.get("media") or [])}
+
+        for t in tweets:
+            tid = t.get("id") or ""
+            if tid:
+                resolved_ids.add(tid)
+            rec = parse_api_tweet(
+                t, users_map, media_map,
+                photos_only=photos_only, like_source=like_source_label,
+            )
+            if rec:
+                records.append(rec)
+
+        # Also count IDs that were looked up but returned no data (deleted tweets etc.)
+        resolved_ids.update(batch)
+
+        processed = min(i + 100, total)
+        print(
+            f"  API: {processed}/{total} looked up, "
+            f"{len(records)} with media",
+            file=sys.stderr, flush=True,
+        )
+        time.sleep(0.25)
+
+    return records, resolved_ids
 
 
 def fetch_likes(

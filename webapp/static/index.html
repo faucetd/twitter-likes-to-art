@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<title>Wall Peepo</title>
+<style>
+  :root {
+    --bg: #0c0c0e;
+    --card-bg: #16162a;
+    --card-border: #1f1f3a;
+    --text: #e8e8ed;
+    --text-muted: #6b6b80;
+    --accent-yes: #4ade80;
+    --accent-no: #f87171;
+    --accent-link: #7ba4f0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  header {
+    width: 100%;
+    max-width: 500px;
+    padding: 14px 20px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--text), var(--accent-link));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  header a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.78rem;
+    font-weight: 500;
+    transition: color 0.15s;
+  }
+
+  header a:hover { color: var(--accent-link); }
+
+  .gh-link {
+    display: flex;
+    color: var(--text-muted);
+    transition: color 0.15s;
+  }
+
+  .gh-link:hover { color: var(--text); }
+
+  .about-bar {
+    width: 100%;
+    max-width: 500px;
+    padding: 6px 20px 2px;
+    font-size: 0.7rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .arena {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 500px;
+    padding: 0 16px;
+    position: relative;
+    min-height: 0;
+  }
+
+  /* Spinner */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border: 2.5px solid #222;
+    border-top-color: var(--accent-link);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Card */
+  .card {
+    position: absolute;
+    width: calc(100% - 32px);
+    max-height: 78dvh;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+    display: flex;
+    flex-direction: column;
+    touch-action: none;
+    cursor: grab;
+    animation: cardIn 0.25s ease-out;
+  }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .card.dragging { cursor: grabbing; }
+
+  .card img {
+    width: 100%;
+    max-height: 62dvh;
+    object-fit: contain;
+    background: #0a0a0c;
+    pointer-events: none;
+    display: block;
+  }
+
+  .card-info {
+    padding: 10px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border-top: 1px solid var(--card-border);
+  }
+
+  .card-artist {
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .card-artist a {
+    color: var(--accent-link);
+    text-decoration: none;
+    transition: color 0.12s;
+  }
+
+  .card-artist a:hover { color: #a0c0ff; }
+
+  .card-title {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  /* Stamps */
+  .stamp {
+    position: absolute;
+    top: 24px;
+    font-size: 2.2rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    padding: 2px 14px;
+    border-radius: 8px;
+    border: 3.5px solid;
+    opacity: 0;
+    pointer-events: none;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  }
+
+  .stamp.yes {
+    left: 16px;
+    color: var(--accent-yes);
+    border-color: var(--accent-yes);
+    transform: rotate(-14deg);
+    box-shadow: 0 0 24px rgba(74,222,128,0.2);
+  }
+
+  .stamp.no {
+    right: 16px;
+    color: var(--accent-no);
+    border-color: var(--accent-no);
+    transform: rotate(14deg);
+    box-shadow: 0 0 24px rgba(248,113,113,0.2);
+  }
+
+  /* Controls */
+  .controls {
+    flex-shrink: 0;
+    padding: 12px 20px 24px;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .btn {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: 2px solid;
+    background: transparent;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.12s, background 0.12s, box-shadow 0.12s;
+  }
+
+  .btn:active { transform: scale(0.88); }
+
+  .btn.no {
+    border-color: rgba(248,113,113,0.5);
+    color: var(--accent-no);
+  }
+
+  .btn.no:hover {
+    background: rgba(248,113,113,0.1);
+    box-shadow: 0 0 20px rgba(248,113,113,0.15);
+    border-color: var(--accent-no);
+  }
+
+  .btn.yes {
+    border-color: rgba(74,222,128,0.5);
+    color: var(--accent-yes);
+  }
+
+  .btn.yes:hover {
+    background: rgba(74,222,128,0.1);
+    box-shadow: 0 0 20px rgba(74,222,128,0.15);
+    border-color: var(--accent-yes);
+  }
+
+  .vote-count {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    min-width: 48px;
+    text-align: center;
+  }
+
+  .hint {
+    position: fixed;
+    bottom: 96px;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    text-align: center;
+    opacity: 0;
+    animation: fadeHint 3.5s ease 1.5s forwards;
+    pointer-events: none;
+  }
+
+  @keyframes fadeHint {
+    0%   { opacity: 0; }
+    12%  { opacity: 0.7; }
+    80%  { opacity: 0.7; }
+    100% { opacity: 0; }
+  }
+
+  /* Responsive */
+  @media (max-height: 700px) {
+    header { padding: 8px 16px 0; }
+    .about-bar { padding: 4px 16px 0; font-size: 0.62rem; }
+    .card img { max-height: 52dvh; }
+    .card { max-height: 72dvh; }
+    .controls { padding: 8px 20px 14px; }
+    .btn { width: 48px; height: 48px; font-size: 1.2rem; }
+    .stamp { font-size: 1.8rem; }
+  }
+
+  @media (max-width: 380px) {
+    header h1 { font-size: 1rem; }
+    header a { font-size: 0.7rem; }
+    .card-info { padding: 8px 12px 10px; }
+    .card-artist { font-size: 0.78rem; }
+  }
+
+  @supports(padding: env(safe-area-inset-bottom)) {
+    .controls { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <h1>wall peepo</h1>
+    <a class="gh-link" href="https://github.com" target="_blank" rel="noopener" title="Source code"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+  </div>
+  <a href="/dashboard">leaderboard &rarr;</a>
+</header>
+
+<div class="about-bar">
+  help me decide which art to hang on my wall — swipe right on pieces that deserve a spot, left on the rest. tap @username for the original post.
+</div>
+
+<div class="arena" id="arena">
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <span>loading art...</span>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn no" id="btn-no" title="Nah (← or swipe left)">✕</button>
+  <span class="vote-count" id="vote-count"></span>
+  <button class="btn yes" id="btn-yes" title="Hang it (→ or swipe right)">♥</button>
+</div>
+
+<div class="hint" id="hint">swipe or use arrow keys</div>
+
+<script>
+const arena = document.getElementById('arena');
+const loading = document.getElementById('loading');
+const voteCountEl = document.getElementById('vote-count');
+let current = null;
+let cardEl = null;
+let busy = false;
+let prefetched = null;
+let sessionVotes = 0;
+
+function updateVoteCount() {
+  voteCountEl.textContent = sessionVotes > 0 ? sessionVotes : '';
+}
+
+async function fetchNext() {
+  const res = await fetch('/api/next');
+  return res.json();
+}
+
+function prefetchNext() {
+  fetchNext().then(data => { prefetched = data; });
+}
+
+async function loadCard() {
+  if (busy) return;
+  busy = true;
+  loading.style.display = '';
+
+  let data;
+  if (prefetched) {
+    data = prefetched;
+    prefetched = null;
+  } else {
+    data = await fetchNext();
+  }
+
+  if (data.done) {
+    loading.querySelector('span').textContent = "you've seen everything!";
+    loading.querySelector('.spinner').style.display = 'none';
+    busy = false;
+    return;
+  }
+
+  current = data;
+  loading.style.display = 'none';
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <img src="/img/${data.filename}" alt="art" loading="eager">
+    <div class="card-info">
+      <span class="card-artist"><a href="https://x.com/${data.username}/status/${data.tweet_id}" target="_blank" rel="noopener" onclick="event.stopPropagation()">@${escHtml(data.username)}</a></span>
+      <span class="card-title">${escHtml(data.title || '')}</span>
+    </div>
+    <div class="stamp yes">HANG</div>
+    <div class="stamp no">NOPE</div>
+  `;
+
+  const img = card.querySelector('img');
+  img.onload = () => {
+    arena.appendChild(card);
+    cardEl = card;
+    busy = false;
+    setupDrag(card);
+    prefetchNext();
+  };
+  img.onerror = () => {
+    vote('left', true);
+  };
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ---- Drag / swipe ----
+
+function setupDrag(card) {
+  let startX = 0, startY = 0, dx = 0, dy = 0, dragging = false;
+
+  function onStart(e) {
+    if (busy) return;
+    dragging = true;
+    card.classList.add('dragging');
+    const pt = e.touches ? e.touches[0] : e;
+    startX = pt.clientX;
+    startY = pt.clientY;
+  }
+
+  function onMove(e) {
+    if (!dragging) return;
+    const pt = e.touches ? e.touches[0] : e;
+    dx = pt.clientX - startX;
+    dy = pt.clientY - startY;
+    const rot = dx * 0.06;
+    card.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
+
+    const stampYes = card.querySelector('.stamp.yes');
+    const stampNo  = card.querySelector('.stamp.no');
+    const progress = Math.min(Math.abs(dx) / 100, 1);
+    if (dx > 0) {
+      stampYes.style.opacity = progress;
+      stampNo.style.opacity = 0;
+    } else {
+      stampNo.style.opacity = progress;
+      stampYes.style.opacity = 0;
+    }
+  }
+
+  function onEnd() {
+    if (!dragging) return;
+    dragging = false;
+    card.classList.remove('dragging');
+    if (Math.abs(dx) > 90) {
+      flingCard(dx > 0 ? 'right' : 'left');
+    } else {
+      card.style.transition = 'transform 0.3s cubic-bezier(.2,.8,.3,1)';
+      card.style.transform = '';
+      card.querySelector('.stamp.yes').style.opacity = 0;
+      card.querySelector('.stamp.no').style.opacity = 0;
+      setTimeout(() => { card.style.transition = ''; }, 300);
+    }
+    dx = 0;
+    dy = 0;
+  }
+
+  card.addEventListener('mousedown', onStart);
+  card.addEventListener('touchstart', onStart, { passive: true });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive: true });
+  window.addEventListener('mouseup', onEnd);
+  window.addEventListener('touchend', onEnd);
+
+  card._cleanup = () => {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('mouseup', onEnd);
+    window.removeEventListener('touchend', onEnd);
+  };
+}
+
+function flingCard(direction) {
+  if (!cardEl) return;
+  const flyX = direction === 'right' ? window.innerWidth : -window.innerWidth;
+  cardEl.style.transition = 'transform 0.35s cubic-bezier(.2,.8,.3,1), opacity 0.3s ease';
+  cardEl.style.transform = `translate(${flyX}px, 0) rotate(${flyX * 0.04}deg)`;
+  cardEl.style.opacity = '0';
+  vote(direction);
+}
+
+async function vote(direction, silent = false) {
+  if (busy && !silent) return;
+  busy = true;
+
+  const imageId = current?.id;
+  const oldCard = cardEl;
+
+  if (oldCard) {
+    oldCard._cleanup?.();
+    setTimeout(() => oldCard.remove(), 350);
+  }
+  cardEl = null;
+
+  if (imageId && !silent) {
+    sessionVotes++;
+    updateVoteCount();
+    fetch('/api/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_id: imageId, direction }),
+    });
+  }
+
+  setTimeout(() => { busy = false; loadCard(); }, silent ? 0 : 180);
+}
+
+// ---- Button + keyboard controls ----
+
+document.getElementById('btn-no').addEventListener('click', () => {
+  if (cardEl && !busy) flingCard('left');
+});
+
+document.getElementById('btn-yes').addEventListener('click', () => {
+  if (cardEl && !busy) flingCard('right');
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft')  { if (cardEl && !busy) flingCard('left'); }
+  if (e.key === 'ArrowRight') { if (cardEl && !busy) flingCard('right'); }
+});
+
+// ---- Init ----
+loadCard();
+</script>
+</body>
+</html>

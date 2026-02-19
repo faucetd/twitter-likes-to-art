@@ -1,43 +1,95 @@
-# Credentials and token setup
+# Authentication setup
 
-## Important: one app = one set of four values
+This project supports three ways to resolve tweet IDs, each with different
+auth requirements. You only need **one** to work.
 
-OAuth 1.0a uses **four** values. **All four must come from the same X Developer app** for a given account:
+## 1. twikit (recommended — free, no API keys)
 
-| Variable | Where it comes from |
-|----------|----------------------|
-| `TWITTER_API_KEY` | **Consumer Key** (same app) |
-| `TWITTER_API_SECRET` | **Consumer Key Secret** (same app) |
-| `TWITTER_ACCESS_TOKEN` | **Access Token** – generated for a *user* (e.g. @destroyerfaucet) **in that same app** |
-| `TWITTER_ACCESS_SECRET` | **Access Token Secret** – generated together with the Access Token |
+twikit uses Twitter's internal GraphQL API with your browser session cookies.
 
-**Common mix-up:** Using the Consumer Key/Secret from *App A* and the Access Token/Secret from *App B* (or from a different user in another app). The API will reject that. For each `.env` file, ensure:
+### First-time setup
 
-- Consumer Key + Consumer Secret = from **one** developer app  
-- Access Token + Access Token Secret = generated in **that same app** for the X account you want to fetch likes for  
+1. Log into x.com in your browser
+2. Open Dev Tools (F12) → Application → Cookies → `https://x.com`
+3. Copy the values for `auth_token` and `ct0`
+4. Run once:
 
-## Per-account env files
+```python
+from twikit import Client
+import asyncio
 
-| Env file | X Developer app | Account | How to use |
-|----------|------------------|---------|------------|
-| **`.env`** | **screapa** | @destroyerfaucet | Default (no `TWITTER_ENV`). All four OAuth 1.0a values from the **screapa** app. |
-| **`.env.hareofsorrow`** | **screapa2** | @hareofsorrow | Run with `TWITTER_ENV=hareofsorrow`. All four values from the **screapa2** app. |
+async def setup():
+    client = Client("en-US")
+    client.set_cookies({"auth_token": "YOUR_TOKEN", "ct0": "YOUR_CT0"})
+    client.save_cookies("twikit_cookies.json")
 
-- **screapa** = destroyerfaucet’s app  
-- **screapa2** = hareofsorrow’s app  
+asyncio.run(setup())
+```
 
-If you have `.env.screapa2`, it’s the same app as hareofsorrow; use `.env.hareofsorrow` (which has the full four credentials) and `TWITTER_ENV=hareofsorrow` when running for that account.
+Subsequent runs reuse `twikit_cookies.json` automatically. Cookies expire
+after a few weeks — just repeat the steps above when that happens.
 
-## Checklist
+### Alternative: username/password login
 
-- [ ] I have one X Developer app per account (or one app and one Access Token per user).
-- [ ] For each `.env.*` file, Consumer Key/Secret and Access Token/Secret are from the **same** app.
-- [ ] The Access Token was generated under “Keys and tokens” → “Access Token” → Generate (for the correct @username).
-- [ ] No credentials are committed to git (`.env` and `.env.*` are in `.gitignore`).
+Add to `.env`:
 
-## If you think tokens were mixed up
+```
+X_USERNAME=your_username
+X_PASSWORD=your_password
+X_EMAIL=your_email
+```
 
-1. **screapa** app → use for **@destroyerfaucet**. Put all four (Consumer Key/Secret + Access Token/Secret from that app) into **`.env`**.
-2. **screapa2** app → use for **@hareofsorrow**. Put all four from that app into **`.env.hareofsorrow`**.
-3. In the [developer portal](https://developer.x.com/en/portal/projects-and-apps): open **screapa** → Keys and tokens → copy Consumer Key + Secret and generate Access Token for @destroyerfaucet → fill `.env`. Open **screapa2** → same steps for @hareofsorrow → fill `.env.hareofsorrow`.
-4. Run: `python run.py ...` (uses `.env` = destroyerfaucet) or `TWITTER_ENV=hareofsorrow python run.py ...` (uses `.env.hareofsorrow` = hareofsorrow).
+twikit will log in and save cookies on first run.
+
+---
+
+## 2. X API v2 (paid, for `--api` mode)
+
+OAuth 1.0a is used for user-context endpoints (fetching your likes).
+Bearer tokens are used for app-only endpoints (tweet lookup by ID).
+
+### Setup
+
+1. Create an app at [developer.x.com](https://developer.x.com)
+2. Copy `.env.example` to `.env` and fill in your credentials
+
+All four OAuth values must come from the **same** developer app:
+
+| Variable | Source |
+|----------|--------|
+| `TWITTER_API_KEY` | Consumer Key |
+| `TWITTER_API_SECRET` | Consumer Key Secret |
+| `TWITTER_ACCESS_TOKEN` | Access Token (generated for your user) |
+| `TWITTER_ACCESS_SECRET` | Access Token Secret |
+| `TWITTER_BEARER_TOKEN` | Bearer Token (for tweet lookup) |
+
+### Multiple accounts
+
+Use `TWITTER_ENV` to switch between credential files:
+
+```bash
+# Default: uses .env
+python run.py --api
+
+# Second account: uses .env.myother
+TWITTER_ENV=myother python run.py --api
+```
+
+---
+
+## 3. gallery-dl (free, slow fallback)
+
+gallery-dl uses your browser cookies directly. No API keys needed, but it's
+rate-limited to ~140 tweets before X throttles it.
+
+Your browser must be **closed** during the run. Use `--browser` to specify
+which browser to read cookies from (default: `brave`).
+
+---
+
+## Security checklist
+
+- [ ] `.env` files are in `.gitignore` (they are by default)
+- [ ] `twikit_cookies.json` is in `.gitignore` (it is by default)
+- [ ] No credentials are committed to git
+- [ ] If credentials were compromised, regenerate them in the developer portal

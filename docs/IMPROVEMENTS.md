@@ -3,7 +3,7 @@
 ## Credentials and security
 
 - **Never log or print** API keys, secrets, or tokens; avoid leaving them in error messages.
-- **Optional:** Support loading secrets from the system keychain or a single env file with multiple named profiles (e.g. `[destroyerfaucet]` / `[hareofsorrow]`) instead of multiple `.env.*` files.
+- **Optional:** Support loading secrets from the system keychain or a single env file with multiple named profiles instead of multiple `.env.*` files.
 - **Docs:** Keep [CREDENTIALS.md](CREDENTIALS.md) in sync with any new env vars or auth methods.
 
 ## Reliability and robustness
@@ -29,8 +29,8 @@
 ## Features
 
 - **Progress:** Progress bar (e.g. tqdm) for download and resolve steps when running on large archives.
-- **Resume:** Persist “last resolved” state so `--resolve-ids` can resume after rate limits or interruptions.
-- **Two accounts in one run:** Support two credential sets (e.g. `TWITTER_ENV=account1` and `TWITTER_ENV=account2` in one invocation) and merge results, instead of requiring two separate runs.
+- **Resume:** Persist “last resolved” state so gallery-dl scraping can resume after interruptions.
+- **Two accounts in one run:** Support multiple credential sets in one invocation and merge results, instead of requiring separate runs per account.
 - **Videos/GIFs:** Option to keep video or GIF media (e.g. first frame or small clip) for backgrounds, not only photos.
 
 ## Documentation and open source

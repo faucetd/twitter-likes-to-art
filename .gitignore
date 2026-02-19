@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 *.env.local
+twikit_cookies.json
 
 # Python
 __pycache__/
@@ -14,7 +15,14 @@ env/
 # Pipeline output
 downloads/
 art/
+test_art/
+art_classifier.pkl
+labels.json
 
 # Twitter data archives (personal data)
 archives/
 *.zip
+
+# OS
+.DS_Store
+*.db

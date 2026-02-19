@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<title>Wall Peepo — Leaderboard</title>
+<style>
+  :root {
+    --bg: #0c0c0e;
+    --card-bg: #16162a;
+    --card-border: #1f1f3a;
+    --text: #e8e8ed;
+    --text-muted: #6b6b80;
+    --accent-yes: #4ade80;
+    --accent-no: #f87171;
+    --accent-link: #7ba4f0;
+    --gold: #facc15;
+    --silver: #a8a29e;
+    --bronze: #c2884d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+  }
+
+  header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--card-border);
+    position: sticky;
+    top: 0;
+    background: rgba(12,12,14,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 10;
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  header a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: color 0.15s;
+  }
+
+  header a:hover { color: var(--accent-link); }
+
+  .gh-link {
+    display: flex;
+    color: var(--text-muted);
+    transition: color 0.15s;
+  }
+
+  .gh-link:hover { color: var(--text); }
+
+  .stats {
+    display: flex;
+    gap: 32px;
+    padding: 20px 20px 8px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .stat-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .stat-label {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 14px;
+    padding: 16px 20px 48px;
+  }
+
+  .tile {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+  }
+
+  .tile:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+
+  .tile img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    background: #0a0a0c;
+  }
+
+  .tile-info {
+    padding: 10px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .tile-rank {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    color: var(--text);
+    font-weight: 800;
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .tile-rank.r1 { background: var(--gold); color: #000; }
+  .tile-rank.r2 { background: var(--silver); color: #000; }
+  .tile-rank.r3 { background: var(--bronze); color: #000; }
+
+  .tile-artist {
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .tile-artist a {
+    color: var(--accent-link);
+    text-decoration: none;
+    transition: color 0.12s;
+  }
+
+  .tile-artist a:hover { color: #a0c0ff; }
+
+  .tile-title {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tile-votes {
+    display: flex;
+    gap: 8px;
+    margin-top: 3px;
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tile-votes .up { color: var(--accent-yes); }
+  .tile-votes .down { color: var(--accent-no); }
+  .tile-votes .score { color: var(--text-muted); }
+
+  .empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  /* Lightbox */
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.94);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    animation: lbIn 0.2s ease;
+  }
+
+  @keyframes lbIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .lightbox.open { display: flex; }
+
+  .lightbox img {
+    max-width: 92vw;
+    max-height: 82dvh;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
+  .lightbox-info {
+    margin-top: 12px;
+    text-align: center;
+    pointer-events: auto;
+  }
+
+  .lightbox-info a {
+    color: var(--accent-link);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .lightbox-info span {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* Responsive */
+  @media (max-width: 500px) {
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      padding: 10px 12px 36px;
+    }
+    .stats { gap: 20px; padding: 14px 16px 6px; }
+    .stat-value { font-size: 1.25rem; }
+    .stat-label { font-size: 0.6rem; }
+    .tile-info { padding: 8px 10px 10px; }
+    .tile-artist { font-size: 0.72rem; }
+    .tile-title { font-size: 0.62rem; }
+    .tile-votes { font-size: 0.6rem; gap: 6px; }
+    header { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <h1>leaderboard</h1>
+    <a class="gh-link" href="https://github.com" target="_blank" rel="noopener" title="Source code"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+  </div>
+  <a href="/">&larr; keep swiping</a>
+</header>
+
+<div class="stats" id="stats"></div>
+<div class="grid" id="grid">
+  <p class="empty">loading...</p>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <img id="lightbox-img" src="" alt="">
+  <div class="lightbox-info" id="lightbox-info"></div>
+</div>
+
+<script>
+const grid = document.getElementById('grid');
+const statsEl = document.getElementById('stats');
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightbox-img');
+const lightboxInfo = document.getElementById('lightbox-info');
+
+lightbox.addEventListener('click', (e) => {
+  if (e.target.tagName !== 'A') lightbox.classList.remove('open');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') lightbox.classList.remove('open');
+});
+
+function openLightbox(filename, username, tweet_id, title) {
+  lightboxImg.src = `/img/${filename}`;
+  lightboxInfo.innerHTML = `
+    <a href="https://x.com/${username}/status/${tweet_id}" target="_blank" rel="noopener">@${esc(username)}</a>
+    <span>${esc(title || '')}</span>
+  `;
+  lightbox.classList.add('open');
+}
+
+async function load() {
+  const [leaders, stats] = await Promise.all([
+    fetch('/api/leaderboard?limit=100').then(r => r.json()),
+    fetch('/api/stats').then(r => r.json()),
+  ]);
+
+  statsEl.innerHTML = `
+    <div class="stat"><span class="stat-value">${stats.total_images.toLocaleString()}</span><span class="stat-label">images</span></div>
+    <div class="stat"><span class="stat-value">${stats.total_votes.toLocaleString()}</span><span class="stat-label">votes</span></div>
+    <div class="stat"><span class="stat-value">${stats.total_sessions.toLocaleString()}</span><span class="stat-label">voters</span></div>
+    <div class="stat"><span class="stat-value">${stats.voted_images.toLocaleString()}</span><span class="stat-label">rated</span></div>
+  `;
+
+  if (!leaders.length) {
+    grid.innerHTML = '<p class="empty">no votes yet — go swipe some art!</p>';
+    return;
+  }
+
+  grid.innerHTML = leaders.map((img, i) => {
+    const rank = i + 1;
+    const rankClass = rank <= 3 ? ` r${rank}` : '';
+    const pct = img.votes_up + img.votes_down > 0
+      ? Math.round(100 * img.votes_up / (img.votes_up + img.votes_down))
+      : 0;
+    const escaped = esc(img.title || '');
+    return `
+      <div class="tile" onclick="openLightbox('${img.filename}', '${img.username}', '${img.tweet_id}', ${JSON.stringify(img.title || '')})">
+        <div class="tile-rank${rankClass}">#${rank}</div>
+        <img src="/img/${img.filename}" alt="" loading="lazy">
+        <div class="tile-info">
+          <div class="tile-artist"><a href="https://x.com/${img.username}/status/${img.tweet_id}" target="_blank" rel="noopener" onclick="event.stopPropagation()">@${esc(img.username)}</a></div>
+          <div class="tile-title">${escaped}</div>
+          <div class="tile-votes">
+            <span class="up">▲ ${img.votes_up}</span>
+            <span class="down">▼ ${img.votes_down}</span>
+            <span class="score">${pct}% · ${Math.round(img.score)}</span>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+load();
+</script>
+</body>
+</html>

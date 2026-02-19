@@ -1,28 +1,23 @@
 # Twitter likes → art backgrounds
 
-Turn your X (Twitter) liked tweets into a local folder of images named `username_date_tweetid_index.ext`, with optional filtering for “art” only. Supports one or two accounts (archives and/or API).
+Download images from your X (Twitter) liked tweets, filter for art using a
+trained CLIP classifier, and rename them to `username_date_tweetid_index.ext`.
 
-**No scraping.** Data comes from your **downloaded X archive** (no API keys) and/or **X API v2** (OAuth 1.0a). No browser automation.
+## Results
 
----
+| Metric | Value |
+|--------|-------|
+| Archives parsed | 2 accounts, 8,845 likes |
+| Unique tweets | 8,785 (after dedup) |
+| Images downloaded | 8,231 |
+| Training labels | 1,005 (626 keep / 379 skip) |
+| Classifier accuracy | 78% (5-fold CV) |
+| Images kept as art | 4,003 (49%) |
+| Final output | 4,177 files (3,919 jpg + 258 png) |
+| Unique artists | 1,810 |
 
-## What it does
-
-1. **Get likes** – From unpacked X archives (`data/like.js`) and/or the X API (`GET /2/users/:id/liked_tweets`).
-2. **Resolve IDs** – If your archive only has tweet IDs (no media URLs), optionally resolve them via the API to get image URLs.
-3. **Download** – Fetch images into a staging folder; dedupe by tweet ID across accounts.
-4. **Rename** – Move to a final folder with filenames like `artistname_2024-03-15_1234567890_0.jpg`.
-5. **Optional** – Filter to “art-like” images with a CLIP-based step.
-
-Output is a single directory of images (and optional `metadata.json`) you can use as backgrounds or reference.
-
----
-
-## Requirements
-
-- Python 3.10+
-- For **archive-only** use: no API keys (you only need your X data export).
-- For **API** or **ID-only archives**: [X Developer account](https://developer.x.com) and an app with OAuth 1.0a User authentication (Read). See [docs/CREDENTIALS.md](docs/CREDENTIALS.md) so you don’t mix tokens between apps.
+Top artists by volume: @solisolsoli (153), @HoracioAltuna (43),
+@xe0_xeo (35), @wikivictorian (30), @rezaafsharr (29), @wiresandtrees (29).
 
 ---
 
@@ -31,129 +26,154 @@ Output is a single directory of images (and optional `metadata.json`) you can us
 ### 1. Install
 
 ```bash
-git clone <this-repo>
-cd twitter_scraper
 pip install -r requirements.txt
 ```
 
-### 2. Get your data
+### 2. Get your X archive
 
-- **Archive:** X → Settings → Your account → Download an archive of your data. Wait for the email, download the ZIP, unzip into e.g. `archives/account1`.
-- **API (optional):** Create an app in the [developer portal](https://developer.x.com), enable User authentication (OAuth 1.0a, Read), then generate **Access Token and Secret** for your user. Put all four OAuth 1.0a values into a `.env` file (see [Credentials](#credentials)).
+X → Settings → Your account → Download an archive of your data.
+Unzip into e.g. `archives/account1`.
 
-### 3. Run
+### 3. Set up authentication
 
-**Archive with full tweet data (older exports):**
+Tweet resolution uses [twikit](https://github.com/d60/twikit) (Twitter's
+internal GraphQL API — free, no paid API needed). On first run you need
+browser cookies. Grab `auth_token` and `ct0` from your browser dev tools
+(F12 → Application → Cookies → x.com) and run the setup once:
 
-```bash
-python run.py --source archive --archives archives/account1 --output art
+```python
+from twikit import Client
+import asyncio
+
+async def setup():
+    client = Client("en-US")
+    client.set_cookies({"auth_token": "YOUR_TOKEN", "ct0": "YOUR_CT0"})
+    client.save_cookies("twikit_cookies.json")
+
+asyncio.run(setup())
 ```
 
-**Archive with only tweet IDs (newer exports) – resolve via API then download:**
+Subsequent runs reuse `twikit_cookies.json` automatically.
+
+### 4. Run
 
 ```bash
-python run.py --source archive --archives archives/account1 --output art --resolve-ids
+python run.py archives/account1 -o art
 ```
 
-**API only (no archive):**
+The pipeline parses the archive, resolves tweet IDs via twikit, downloads
+images from the CDN, and renames them into `art/`.
+
+---
+
+## Common recipes
 
 ```bash
-python run.py --source api --output art
-```
+# Two accounts at once
+python run.py archives/account1 archives/account2 -o art
 
-**Two accounts:** Run once per account (different archives and/or different env), then merge the output folders if you want.
+# Download only (no rename), limit to 500 tweets
+python run.py archives/account1 --no-rename --limit 500
 
-```bash
-# Account 1 (uses .env)
-python run.py --source archive --archives archives/account1 --output art --resolve-ids
+# With CLIP art filter (uses trained classifier if available)
+python run.py archives/account1 -o art --filter-art
 
-# Account 2 (uses .env.hareofsorrow when TWITTER_ENV is set)
-TWITTER_ENV=hareofsorrow python run.py --source archive --archives archives/account2 --output art_hare --resolve-ids
+# Fetch from X API instead of archive (needs .env credentials)
+python run.py --api -o art
 ```
 
 ---
 
-## Data sources
+## Train a personal art filter
 
-| Source | How | When to use |
-|--------|-----|-------------|
-| **Archive** | Parse `data/like.js` from your downloaded X ZIP. | No API keys; one-time export. Newer archives may be ID-only → use `--resolve-ids`. |
-| **API** | `GET /2/users/:id/liked_tweets` with OAuth 1.0a. | Fresh data; need developer app + user tokens. |
-
----
-
-## Credentials
-
-- Copy [.env.example](.env.example) to `.env` and fill in the four OAuth 1.0a values.
-- **All four must be from the same X Developer app** (Consumer Key/Secret + Access Token/Secret for one user in that app). Mixing apps or users causes auth errors. See **[docs/CREDENTIALS.md](docs/CREDENTIALS.md)** for details and a checklist.
-- For a second account, create e.g. `.env.hareofsorrow` with that account’s four values and run with `TWITTER_ENV=hareofsorrow`.
-- **App ↔ account mapping (example):** screapa app = @destroyerfaucet (use `.env`); screapa2 app = @hareofsorrow (use `.env.hareofsorrow`). See [docs/CREDENTIALS.md](docs/CREDENTIALS.md).
-
-Never commit `.env` or `.env.*` (they are in `.gitignore`).
-
----
-
-## Usage reference
-
-| Goal | Command |
-|------|--------|
-| Archive only (no API) | `python run.py --source archive --archives archives/account1 -o art` |
-| Archive + resolve IDs via API | `python run.py --source archive --archives archives/account1 -o art --resolve-ids` |
-| API only | `python run.py --source api -o art` |
-| Second account | `TWITTER_ENV=hareofsorrow python run.py --source archive --archives archives/account2 -o art_hare --resolve-ids` |
-| Filter to “art” (needs CLIP deps) | Add `--filter-art` |
-| Tweet title in filename | Add `--include-title` |
-| Parse/fetch only (no download) | Add `--no-download` |
-
-Step-by-step (advanced):
+The `--filter-art` flag uses zero-shot CLIP by default. Training a classifier
+on your own labels is much more accurate (78% vs generic prompts):
 
 ```bash
-python parse_archive.py archives/account1 -o parsed.json --include-id-only
-python resolve_tweet_ids.py parsed.json -o resolved.json   # needs .env
-python download_media.py resolved.json -o downloads -m downloads/manifest.json
-python rename_and_organize.py downloads/manifest.json -o art --sidecar art/metadata.json
+# 1. Download everything first
+python run.py archives/account1 archives/account2 --no-rename
+
+# 2. Label images in browser (click to cycle: keep / skip)
+python label_images.py downloads/
+# ~100+ labels is enough, 1000+ is great
+
+# 3. Train classifier
+python filter_art.py train downloads/labels.json
+
+# 4. Filter with trained classifier
+python filter_art.py filter downloads/manifest.json
+
+# 5. Rename filtered images into art/
+python run.py archives/account1 archives/account2 -o art --filter-art
 ```
+
+The classifier uses CLIP ViT-B-32 embeddings (512-dim) with logistic
+regression. Training takes ~45s on CPU for 1,000 labels. The trained model
+is saved as `art_classifier.pkl` and auto-detected on subsequent runs.
 
 ---
 
-## Output
+## Flags
 
-- **art/** (or `--output`) – Images named `username_YYYY-MM-DD_tweetid_index.ext`; optional `metadata.json`.
-- **downloads/** – Staging images and `manifest.json` (and `art_manifest.json` if you used `--filter-art`).
+| Flag | Description |
+|------|-------------|
+| `-o`, `--output` | Output directory (default: `art`) |
+| `--download-dir` | Staging directory (default: `downloads`) |
+| `--no-download` | Parse only, print record count |
+| `--no-rename` | Download only, don't rename |
+| `--filter-art` | CLIP art filter (zero-shot or trained) |
+| `--limit N` | Limit tweets to resolve |
+| `--browser NAME` | Browser for gallery-dl fallback cookies (default: `brave`) |
+| `--include-title` | Add tweet text to filenames |
+| `--timeout N` | Download timeout in seconds (default: 30) |
+| `--api` | Fetch likes via X API v2 instead of archive |
 
 ---
 
-## Optional: art filter (CLIP)
+## How resolution works
 
-To keep only “art-like” images:
+Tweet ID resolution tries three strategies in order:
 
-```bash
-pip install open-clip-torch torch Pillow
-python run.py --source archive --archives archives/account1 -o art --resolve-ids --filter-art
-```
+1. **twikit** (free) — Uses Twitter's internal GraphQL API with browser cookies.
+   Handles ~20 tweets/batch, no rate limit issues for typical archive sizes.
+2. **X API v2** (paid) — Bearer token auth against `api.x.com`. Falls back here
+   if twikit cookies are missing. Requires pay-per-use credits ($0.005/read).
+3. **gallery-dl** (free, slow) — Scrapes individual tweet pages using browser
+   cookies. Last resort; rate-limited to ~140 tweets before throttling.
+
+---
+
+## API credentials (optional)
+
+For `--api` mode or as a fallback, copy `.env.example` to `.env` and fill in
+your OAuth 1.0a values and/or bearer token.
 
 ---
 
 ## Project layout
 
-- **run.py** – Main entry (archive or API → download → rename; optional resolve-ids and filter-art).
-- **parse_archive.py** – Reads `data/like.js`; supports full tweets and ID-only (`--include-id-only`).
-- **fetch_likes_api.py** – Fetches liked tweets (with media) via X API v2; loads `.env` or `.env.$TWITTER_ENV`.
-- **resolve_tweet_ids.py** – Resolves tweet IDs to full tweets + media via API (for ID-only archives).
-- **download_media.py** – Downloads image URLs; writes `downloads/` and manifest.
-- **rename_and_organize.py** – Renames/moves to final filenames and optional metadata.
-- **filter_art.py** – Optional CLIP-based art filter.
-- **docs/CREDENTIALS.md** – How to set up and avoid mixing API tokens.
-- **docs/IMPROVEMENTS.md** – Ideas for improving the repo (security, tests, features, open source).
+| File | Purpose |
+|------|---------|
+| `run.py` | Main pipeline: parse → resolve → download → filter → rename |
+| `parse_archive.py` | Read `data/like.js` from X archives |
+| `resolve_via_twikit.py` | Resolve tweet IDs via twikit (internal GraphQL API) |
+| `resolve_via_scrape.py` | Fallback: resolve via gallery-dl |
+| `download_media.py` | Download images from X CDN |
+| `rename_and_organize.py` | Rename files to `user_date_id_idx.ext` |
+| `filter_art.py` | CLIP art filter + classifier training |
+| `label_images.py` | Browser UI for labeling images (keep/skip) |
+| `fetch_likes_api.py` | X API v2 liked tweets (for `--api` mode) |
+| `webapp/` | Web gallery for browsing filtered art (deployed separately) |
 
 ---
 
-## Improving the repo
+## Web gallery
 
-See **[docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md)** for concrete ideas (security, testing, two-account-in-one-run, progress bars, contributing guide, license, etc.) and for making this ready for open source.
+A small FastAPI app for browsing the filtered art lives in `webapp/`.
+See it live at [wall-peepo.fly.dev](https://wall-peepo.fly.dev).
 
 ---
 
 ## License
 
-Add a LICENSE file (e.g. MIT) when you open-source the project.
+[MIT](LICENSE)

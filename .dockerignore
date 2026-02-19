@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+.git
+downloads/
+data/
+*.db
+webapp/dedup_review.html
+.DS_Store
+*.pkl
+venv/
+.env

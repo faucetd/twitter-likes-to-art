@@ -61,18 +61,25 @@ def parse_like_js(path: Path) -> list[Any]:
     return json.loads(json_str)
 
 
+# Fields present in ID-only archive entries (no full tweet data).
+# Newer X exports include expandedUrl alongside tweetId/fullText.
+_ID_ONLY_KEYS = {"tweetId", "fullText", "expandedUrl"}
+
+
 def get_tweet_from_entry(entry: dict[str, Any]) -> dict[str, Any] | None:
     """
     Get the tweet object from an archive entry. Entry may be:
-    - {"like": {"tweetId": "..."}}  -> no full tweet, return None (caller can record ID only)
-    - {"like": { <full tweet> }}     -> return the inner object
-    - { <full tweet> }              -> return entry
+    - {"like": {"tweetId": "...", "fullText": "...", "expandedUrl": "..."}}
+         -> ID-only (newer exports), return None so caller can record ID
+    - {"like": { <full tweet with entities/user/etc> }}
+         -> return the inner object
+    - { <full tweet> }
+         -> return entry itself
     """
     if "like" in entry:
         inner = entry["like"]
         if isinstance(inner, dict):
-            # If it has only tweetId (or is empty), it's ID-only — no full tweet data
-            if not inner or set(inner.keys()) <= {"tweetId", "fullText"}:
+            if not inner or set(inner.keys()) <= _ID_ONLY_KEYS:
                 return None
             return inner
         return None
@@ -160,7 +167,7 @@ def extract_tweets_with_media(
     and return a list of records: { tweet_id, username, date, media_urls, text, like_source }.
     By default only includes tweets that have at least one image URL in the archive.
     If include_id_only=True, also emits likes that only have tweetId/fullText (media_urls=[])
-    so they can be resolved via the API (resolve_tweet_ids.py).
+    so they can be resolved via gallery-dl or the API.
     """
     like_files = find_like_files(archive_dir)
     if not like_files:
@@ -223,7 +230,7 @@ def main() -> None:
     parser.add_argument(
         "--include-id-only",
         action="store_true",
-        help="Include likes that only have tweetId/fullText (no media in archive). Use with resolve_tweet_ids.py to fetch media via API.",
+        help="Include likes that only have tweetId/fullText (no media in archive). Used by run.py to resolve via gallery-dl.",
     )
     args = parser.parse_args()
 
